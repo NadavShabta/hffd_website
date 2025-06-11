@@ -6,12 +6,23 @@ Local implementation for web demonstration
 
 from typing import Any, Mapping, Sequence, List, Dict
 import logging
-from fairpyx import Instance
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
+class Instance:
+    """A simplified version of the Instance class for our web demo"""
+    def __init__(self, valuations: np.ndarray):
+        self.valuations = valuations
+        self.num_of_agents = len(valuations)
+        self.num_of_items = len(valuations[0])
+
+    def agent_item_value(self, agent: int, item: int) -> float:
+        """Get the value of an item for an agent"""
+        return float(self.valuations[agent][item])
+
 class AllocationBuilder:
-    """A simplified version of fairpyx's AllocationBuilder for our web demo"""
+    """A simplified version of AllocationBuilder for our web demo"""
     def __init__(self, instance: Instance):
         self.instance = instance
         self._allocations: Dict[Any, List[Any]] = {}
