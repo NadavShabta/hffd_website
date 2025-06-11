@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}HFFD Algorithm Demonstration{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-section">
+    <div class="container">
+        <h1 class="hero-title">HFFD Algorithm</h1>
+        <p class="hero-subtitle">A Fair Division Algorithm for Heterogeneous Agents</p>
+        <a href="{{ url_for('form') }}" class="btn btn-custom">
+            <i class="fas fa-play"></i> Try the Algorithm
+        </a>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="container my-5">
+    <!-- Algorithm Description -->
+    <div class="row mb-5">
+        <div class="col-lg-8 mx-auto">
+            <div class="card card-custom">
+                <div class="card-header card-header-custom">
+                    <h3 class="mb-0">About the Algorithm</h3>
+                </div>
+                <div class="card-body">
+                    <p class="lead">
+                        The HFFD (Heterogeneous First-Fit Decreasing) algorithm is a fair division algorithm
+                        that allocates chores to agents with heterogeneous costs under Identical-Order
+                        Preference (IDO).
+                    </p>
+                    <p>
+                        This implementation is based on the paper:
+                        <a href="https://arxiv.org/abs/2302.04581" target="_blank">
+                            "A Reduction from Chores Allocation to Job Scheduling"
+                        </a>
+                        by Xin Huang and Erel Segal-Halevi (2024).
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Features -->
+    <div class="row mb-5">
+        <div class="col-md-4">
+            <div class="card card-custom h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-balance-scale fa-3x mb-3"></i>
+                    <h4>Fair Division</h4>
+                    <p>Allocates chores fairly among agents with different cost structures</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card card-custom h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-cogs fa-3x mb-3"></i>
+                    <h4>Efficient</h4>
+                    <p>Uses a two-pass approach to efficiently allocate items while respecting thresholds</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card card-custom h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                    <h4>Visualization</h4>
+                    <p>Step-by-step visualization of the allocation process</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How to Use -->
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card card-custom">
+                <div class="card-header card-header-custom">
+                    <h3 class="mb-0">How to Use</h3>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li class="mb-3">
+                            <strong>Enter Agent Valuations:</strong>
+                            <p>For each agent, enter their valuation (cost) for each item as comma-separated numbers.</p>
+                        </li>
+                        <li class="mb-3">
+                            <strong>Set Thresholds:</strong>
+                            <p>Enter the maximum cost threshold for each agent as comma-separated numbers.</p>
+                        </li>
+                        <li class="mb-3">
+                            <strong>Run the Algorithm:</strong>
+                            <p>Click "Run Algorithm" to see the allocation process and results.</p>
+                        </li>
+                        <li>
+                            <strong>View Results:</strong>
+                            <p>See the final allocation, step-by-step process, and any unallocated items.</p>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

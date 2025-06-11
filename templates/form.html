@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}HFFD Algorithm Input{% endblock %}
+
+{% block head %}
+<style>
+    .form-section {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        padding: 30px;
+        margin-bottom: 30px;
+    }
+
+    .ido-info {
+        background: #f8f9fa;
+        border-left: 4px solid #667eea;
+        padding: 20px;
+        margin-bottom: 30px;
+        border-radius: 0 10px 10px 0;
+    }
+
+    .ido-info h4 {
+        color: #4a5568;
+        margin-bottom: 15px;
+    }
+
+    .ido-info ul {
+        margin-bottom: 0;
+        padding-left: 20px;
+    }
+
+    .ido-info li {
+        margin-bottom: 10px;
+    }
+
+    .ido-example {
+        background: #e9ecef;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+        font-family: monospace;
+    }
+
+    .agent-input {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .threshold-input {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="form-section">
+                <h2 class="text-center mb-4">HFFD Algorithm Input</h2>
+                
+                <!-- IDO Information -->
+                <div class="ido-info">
+                    <h4><i class="fas fa-info-circle"></i> Important: Identical-Order Preference (IDO)</h4>
+                    <p>The HFFD algorithm requires that all agents agree on the relative ordering of items by cost. This means:</p>
+                    <ul>
+                        <li>If one agent considers item A more costly than item B, all other agents must also consider A more costly than B</li>
+                        <li>The actual costs can be different for each agent, but the ordering must be the same</li>
+                        <li>This property is essential for the algorithm to work correctly</li>
+                    </ul>
+                    <div class="ido-example">
+                        <p><strong>Valid Example (IDO):</strong></p>
+                        <p>Agent 1: [5, 3, 1]  (5 > 3 > 1)</p>
+                        <p>Agent 2: [10, 6, 2] (10 > 6 > 2)</p>
+                        <p>Agent 3: [2.5, 1.5, 0.5] (2.5 > 1.5 > 0.5)</p>
+                        <p><strong>Invalid Example (Not IDO):</strong></p>
+                        <p>Agent 1: [5, 3, 1]  (5 > 3 > 1)</p>
+                        <p>Agent 2: [1, 6, 2]  (1 < 6 > 2) - Different ordering!</p>
+                    </div>
+                </div>
+
+                <form action="{{ url_for('process') }}" method="post">
+                    <!-- Agent Valuations -->
+                    <div class="agent-input">
+                        <h4>Agent Valuations</h4>
+                        <p class="text-muted">Enter comma-separated values for each agent's valuation of items</p>
+                        <div id="agent-inputs">
+                            <div class="mb-3">
+                                <label for="agent1" class="form-label">Agent 1 Valuations</label>
+                                <input type="text" class="form-control" id="agent1" name="agent_data[]" required
+                                       placeholder="e.g., 5, 3, 1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="agent2" class="form-label">Agent 2 Valuations</label>
+                                <input type="text" class="form-control" id="agent2" name="agent_data[]" required
+                                       placeholder="e.g., 10, 6, 2">
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary" id="add-agent">
+                            <i class="fas fa-plus"></i> Add Agent
+                        </button>
+                    </div>
+
+                    <!-- Agent Thresholds -->
+                    <div class="threshold-input">
+                        <h4>Agent Thresholds</h4>
+                        <p class="text-muted">Enter comma-separated thresholds for each agent</p>
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="thresholds" name="thresholds" required
+                                   placeholder="e.g., 8, 15">
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-custom">
+                            <i class="fas fa-play"></i> Run Algorithm
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="generate-random">
+                            <i class="fas fa-random"></i> Generate Random Input
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let agentCount = 2;
+    
+    // Add agent input field
+    document.getElementById('add-agent').addEventListener('click', function() {
+        agentCount++;
+        const newAgent = document.createElement('div');
+        newAgent.className = 'mb-3';
+        newAgent.innerHTML = `
+            <label for="agent${agentCount}" class="form-label">Agent ${agentCount} Valuations</label>
+            <input type="text" class="form-control" id="agent${agentCount}" name="agent_data[]" required
+                   placeholder="e.g., 2.5, 1.5, 0.5">
+        `;
+        document.getElementById('agent-inputs').appendChild(newAgent);
+    });
+
+    // Generate random input
+    document.getElementById('generate-random').addEventListener('click', function() {
+        fetch('/generate_random', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Clear existing agent inputs
+            const agentInputs = document.getElementById('agent-inputs');
+            agentInputs.innerHTML = '';
+            
+            // Add new agent inputs
+            data.agents.forEach((agent, index) => {
+                const newAgent = document.createElement('div');
+                newAgent.className = 'mb-3';
+                newAgent.innerHTML = `
+                    <label for="agent${index + 1}" class="form-label">Agent ${index + 1} Valuations</label>
+                    <input type="text" class="form-control" id="agent${index + 1}" name="agent_data[]" required
+                           value="${agent}">
+                `;
+                agentInputs.appendChild(newAgent);
+            });
+            
+            // Update thresholds
+            document.getElementById('thresholds').value = data.thresholds;
+            
+            // Update agent count
+            agentCount = data.agents.length;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error generating random input');
+        });
+    });
+});
+</script>
+{% endblock %}
