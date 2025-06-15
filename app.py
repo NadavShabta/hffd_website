@@ -1,7 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 import numpy as np
 from datetime import datetime
-from hffd_algorithm import hffd, AllocationBuilder, Instance
+from fairpyx import Instance, divide             # full library
+from fairpyx.algorithms.hffd import hffd
+
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # Change this in production
