@@ -1,8 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 import numpy as np
 from datetime import datetime
-from fairpyx import Instance, divide             # full library
-from fairpyx.algorithms.hffd import hffd
+from hffd_algorithm import hffd, AllocationBuilder, Instance
 
 
 app = Flask(__name__)
