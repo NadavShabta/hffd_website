@@ -1,7 +1,12 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 import numpy as np
 from datetime import datetime
-from hffd_algorithm import hffd, AllocationBuilder, Instance
+from fairpyx import Instance, AllocationBuilder
+from fairpyx.algorithms import hffd
+import io
+import logging
+import re
+print(hffd, 'hffd')  # This will use your GitHub implementation
 
 
 app = Flask(__name__)
@@ -112,6 +117,8 @@ def form():
 
 @app.route('/process', methods=['POST'])
 def process():
+
+
     """Process the algorithm with input validation"""
     agents_data = request.form.getlist('agent_data[]')
     thresholds_data = request.form.get('thresholds', '').strip()
@@ -145,9 +152,61 @@ def process():
         flash(f'Error processing algorithm: {str(e)}', 'error')
         return redirect(url_for('form'))
 
+# @app.route('/result')
+# def result():
+#     """Result page with visualization"""
+#     agents_data = request.args.get('agents_data', '')
+#     thresholds_data = request.args.get('thresholds_data', '')
+#
+#     if not agents_data or not thresholds_data:
+#         flash('No input data provided', 'error')
+#         return redirect(url_for('form'))
+#
+#     # Parse stored data
+#     agents = [list(map(float, a.split('|'))) for a in agents_data.split(',')]
+#     thresholds = {
+#         i: float(t.strip()) for i, t in enumerate(thresholds_data.split(','))
+#     }
+#
+#     # Create instance and run algorithm
+#     print(np.array(agents),'instanceinstanceinstance')
+#
+#     instance = Instance(valuations=np.array(agents))
+#     builder = AllocationBuilder(instance)
+#
+#     print(builder, 'builderbuilderbuilder')
+#     print(vars(builder))
+#     # OR
+#     print(builder.__dict__)
+#     print(thresholds, 'thresholdsthresholdsthresholds')
+#     algorithm_result = hffd(builder, thresholds=thresholds)
+#
+#     # Calculate total costs for each agent
+#     total_costs = {}
+#     print(algorithm_result, "popopopopopo")
+#     for agent, items in algorithm_result['allocations'].items():
+#         if items:
+#             total_costs[agent] = sum(agents[agent][item] for item in items)
+#         else:
+#             total_costs[agent] = 0
+#
+#     return render_template('result.html',
+#                          agents=agents,
+#                          thresholds=thresholds,
+#                          allocations=algorithm_result['allocations'],
+#                          total_costs=total_costs,
+#                          steps=algorithm_result['steps'],
+#                          unallocated=algorithm_result['unallocated'],
+#                          timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
 @app.route('/result')
 def result():
-    """Result page with visualization"""
+    # Setup a log capture stream
+    log_stream = io.StringIO()
+    stream_handler = logging.StreamHandler(log_stream)
+    logger = logging.getLogger('fairpyx.algorithms.hffd')
+    logger.setLevel(logging.INFO)
+    logger.addHandler(stream_handler)
     agents_data = request.args.get('agents_data', '')
     thresholds_data = request.args.get('thresholds_data', '')
 
@@ -157,29 +216,62 @@ def result():
 
     # Parse stored data
     agents = [list(map(float, a.split('|'))) for a in agents_data.split(',')]
-    thresholds = list(map(float, thresholds_data.split(',')))
+    thresholds = {i: float(t.strip()) for i, t in enumerate(thresholds_data.split(','))}
 
-    # Create instance and run algorithm
-    instance = Instance(valuations=np.array(agents))
-    builder = AllocationBuilder(instance)
-    algorithm_result = hffd(builder, thresholds=thresholds)
+    # Create instance
+    valuations = np.array(agents)
+    instance = Instance(valuations=valuations)
 
-    # Calculate total costs for each agent
+    # # Run algorithm using fairpyx.divide (correct API)
+    from fairpyx import divide
+    allocations = divide(hffd, instance, thresholds=thresholds)
+
+    # Calculate total costs
     total_costs = {}
-    for agent, items in algorithm_result['allocations'].items():
+    for agent, items in allocations.items():
         if items:
             total_costs[agent] = sum(agents[agent][item] for item in items)
         else:
             total_costs[agent] = 0
+#########################
+    stream_handler.flush()
+    log_contents = log_stream.getvalue()
+
+    # Clean up the handler so it doesn't duplicate logs next time
+    logger.removeHandler(stream_handler)
+
+    # Use regex to extract unallocated items from log
+    match = re.search(r"Unallocated chores: \[(.*?)\]", log_contents)
+    if match:
+        unallocated = [int(x.strip()) for x in match.group(1).split(',')]
+    else:
+        unallocated = []
+    ########################
+    steps = []
+    bundle_pattern = re.compile(r"Bundle #(\d+) → agent (\d+) : \[(.*?)\]")
+
+    for line in log_contents.splitlines():
+        match = bundle_pattern.search(line)
+        if match:
+            step_num = int(match.group(1))
+            agent_id = int(match.group(2))
+            bundle = [int(x.strip()) for x in match.group(3).split(',') if x.strip()]
+            steps.append({
+                'step': step_num,
+                'agent': agent_id,
+                'bundle': bundle,
+                'description': f"Bundle {bundle} was assigned to agent {agent_id}."
+            })
 
     return render_template('result.html',
-                         agents=agents,
-                         thresholds=thresholds,
-                         allocations=algorithm_result['allocations'],
-                         total_costs=total_costs,
-                         steps=algorithm_result['steps'],
-                         unallocated=algorithm_result['unallocated'],
-                         timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                           agents=agents,
+                           thresholds=thresholds,
+                           allocations=allocations,
+                           total_costs=total_costs,
+                           steps=steps,
+                           unallocated=unallocated,  # optional
+                           timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
 
 @app.route('/generate_random', methods=['POST'])
 def generate_random():
