@@ -71,43 +71,76 @@ def validate_input(agents_data, thresholds_data):
     except ValueError:
         return False, "Please enter valid numbers"
 
-def generate_random_input(num_agents=None, num_chores=None):
-    """Generate random input for demonstration that satisfies IDO using positive integers, with user-defined size and unique agent vectors"""
+
+def generate_random_input(num_agents: int | None = None,
+                          num_chores:  int | None = None,
+                          low_min:      int = 1,
+                          high_min:     int = 6,
+                          low_gap:      int = 1,
+                          high_gap:     int = 10,
+                          max_attempts: int = 30):
+    """
+    מחזיר קלט רנדומלי שמקיים IDO (Increasing Differences of Opinion).
+
+    • num_agents / num_chores – אם None יוגרלו (2-5, 5-10).
+    • low_min..high_min       – טווח ערך החפץ הקטן ביותר.
+    • low_gap..high_gap       – טווח הפערים בין חפצים סמוכים (חיובי ⇒ שומר דירוג).
+    • max_attempts            – מספר ניסיונות לייצר וקטורים ייחודיים ו-IDO.
+
+    מחזיר dict:
+        {
+          'agents'    : ["v1,v2,..."],  # לכל סוכן
+          'thresholds': "t1,t2,..."
+        }
+    """
     if num_agents is None:
-        num_agents = np.random.randint(2, 5)
+        num_agents = np.random.randint(2, 6)   # 2-5
     if num_chores is None:
-        num_chores = np.random.randint(5, 10)
+        num_chores = np.random.randint(5, 11)  # 5-10
 
-    # Generate base valuations that satisfy IDO
-    # First, generate a random number of unique values
-    num_unique_values = np.random.randint(3, min(8, num_chores + 1))
-    unique_values = np.sort(np.random.randint(1, 10, size=num_unique_values))[::-1]  # Sort in descending order
+    attempts = 0
+    while attempts < max_attempts:
+        attempts += 1
+        valuations = []
 
-    # Then, randomly assign these values to items, allowing some items to have equal values
-    base_valuations = np.random.choice(unique_values, size=num_chores)
+        # ─── 1) בונים וקטור *נפרד* לכל סוכן ───
+        for _ in range(num_agents):
+            # ערך החפץ "הכי זול"
+            min_val = np.random.randint(low_min, high_min)
 
-    # Generate agent-specific multipliers (all positive integers)
-    # Ensure unique agent vectors by using unique multipliers
-    multipliers = np.arange(1, num_agents + 1) + np.random.randint(0, 3, size=num_agents)
-    while len(set(tuple((base_valuations * m).tolist()) for m in multipliers)) < num_agents:
-        multipliers = np.arange(1, num_agents + 1) + np.random.randint(0, 3, size=num_agents)
+            # פערים חיוביים אקראיים בין חפצים סמוכים
+            gaps = np.random.randint(low_gap, high_gap, size=num_chores - 1)
 
-    # Create valuations for each agent
-    valuations = np.array([base_valuations * m for m in multipliers])
+            v = np.empty(num_chores, dtype=int)
+            v[-1] = min_val
+            # הולכים מהחפץ האחרון (הזול) לראשון (היקר)
+            for i in range(num_chores - 2, -1, -1):
+                v[i] = v[i + 1] + gaps[i]
 
-    # Verify IDO property
-    is_ido, conflict = check_ido(valuations)
-    if not is_ido:
-        # If somehow we generated invalid input, try again
-        return generate_random_input(num_agents, num_chores)
+            valuations.append(v)
 
-    # Generate thresholds: sum of each agent's values divided by number of agents, rounded up
-    thresholds = [int(np.ceil(np.sum(row) / num_agents)) for row in valuations]
+        valuations = np.vstack(valuations)
 
-    return {
-        'agents': [','.join(map(str, row)) for row in valuations],
-        'thresholds': ','.join(map(str, thresholds))
-    }
+        # ─── 2) ודא ייחודיות בין הסוכנים ───
+        if len({tuple(row) for row in valuations}) < num_agents:
+            continue
+
+        # ─── 3) בדיקת IDO (כל הסוכנים שומרים אותו סדר) ───
+        is_ido, _ = check_ido(valuations)      # מניח שקיימת פונקציה
+        if not is_ido:
+            continue
+
+        # ─── 4) חישוב ספים ───
+        thresholds = np.ceil(valuations.sum(axis=1) / num_agents).astype(int)
+
+        return {
+            'agents': [','.join(map(str, row)) for row in valuations],
+            'thresholds': ','.join(map(str, thresholds))
+        }
+
+    # במקרים חריגים – קריאה רקורסיבית (נדיר שצריך)
+    return generate_random_input(num_agents, num_chores,
+                                 low_min, high_min, low_gap, high_gap, max_attempts)
 
 @app.route('/')
 def index():
