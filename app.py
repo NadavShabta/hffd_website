@@ -71,35 +71,39 @@ def validate_input(agents_data, thresholds_data):
     except ValueError:
         return False, "Please enter valid numbers"
 
-def generate_random_input():
-    """Generate random input for demonstration that satisfies IDO using positive integers"""
-    num_agents = np.random.randint(2, 5)
-    num_items = np.random.randint(5, 10)
-    
+def generate_random_input(num_agents=None, num_chores=None):
+    """Generate random input for demonstration that satisfies IDO using positive integers, with user-defined size and unique agent vectors"""
+    if num_agents is None:
+        num_agents = np.random.randint(2, 5)
+    if num_chores is None:
+        num_chores = np.random.randint(5, 10)
+
     # Generate base valuations that satisfy IDO
     # First, generate a random number of unique values
-    num_unique_values = np.random.randint(3, min(8, num_items + 1))
+    num_unique_values = np.random.randint(3, min(8, num_chores + 1))
     unique_values = np.sort(np.random.randint(1, 10, size=num_unique_values))[::-1]  # Sort in descending order
-    
+
     # Then, randomly assign these values to items, allowing some items to have equal values
-    base_valuations = np.random.choice(unique_values, size=num_items)
-    
+    base_valuations = np.random.choice(unique_values, size=num_chores)
+
     # Generate agent-specific multipliers (all positive integers)
-    multipliers = np.random.randint(1, 3, size=num_agents)
-    
+    # Ensure unique agent vectors by using unique multipliers
+    multipliers = np.arange(1, num_agents + 1) + np.random.randint(0, 3, size=num_agents)
+    while len(set(tuple((base_valuations * m).tolist()) for m in multipliers)) < num_agents:
+        multipliers = np.arange(1, num_agents + 1) + np.random.randint(0, 3, size=num_agents)
+
     # Create valuations for each agent
     valuations = np.array([base_valuations * m for m in multipliers])
-    
+
     # Verify IDO property
     is_ido, conflict = check_ido(valuations)
     if not is_ido:
         # If somehow we generated invalid input, try again
-        return generate_random_input()
-    
-    # Generate thresholds that are reasonable given the valuations
-    max_valuation = np.max(valuations)
-    thresholds = np.random.randint(max_valuation * 2, max_valuation * 4, size=num_agents)
-    
+        return generate_random_input(num_agents, num_chores)
+
+    # Generate thresholds: sum of each agent's values divided by number of agents, rounded up
+    thresholds = [int(np.ceil(np.sum(row) / num_agents)) for row in valuations]
+
     return {
         'agents': [','.join(map(str, row)) for row in valuations],
         'thresholds': ','.join(map(str, thresholds))
@@ -152,52 +156,6 @@ def process():
         flash(f'Error processing algorithm: {str(e)}', 'error')
         return redirect(url_for('form'))
 
-# @app.route('/result')
-# def result():
-#     """Result page with visualization"""
-#     agents_data = request.args.get('agents_data', '')
-#     thresholds_data = request.args.get('thresholds_data', '')
-#
-#     if not agents_data or not thresholds_data:
-#         flash('No input data provided', 'error')
-#         return redirect(url_for('form'))
-#
-#     # Parse stored data
-#     agents = [list(map(float, a.split('|'))) for a in agents_data.split(',')]
-#     thresholds = {
-#         i: float(t.strip()) for i, t in enumerate(thresholds_data.split(','))
-#     }
-#
-#     # Create instance and run algorithm
-#     print(np.array(agents),'instanceinstanceinstance')
-#
-#     instance = Instance(valuations=np.array(agents))
-#     builder = AllocationBuilder(instance)
-#
-#     print(builder, 'builderbuilderbuilder')
-#     print(vars(builder))
-#     # OR
-#     print(builder.__dict__)
-#     print(thresholds, 'thresholdsthresholdsthresholds')
-#     algorithm_result = hffd(builder, thresholds=thresholds)
-#
-#     # Calculate total costs for each agent
-#     total_costs = {}
-#     print(algorithm_result, "popopopopopo")
-#     for agent, items in algorithm_result['allocations'].items():
-#         if items:
-#             total_costs[agent] = sum(agents[agent][item] for item in items)
-#         else:
-#             total_costs[agent] = 0
-#
-#     return render_template('result.html',
-#                          agents=agents,
-#                          thresholds=thresholds,
-#                          allocations=algorithm_result['allocations'],
-#                          total_costs=total_costs,
-#                          steps=algorithm_result['steps'],
-#                          unallocated=algorithm_result['unallocated'],
-#                          timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 @app.route('/result')
 def result():
@@ -276,7 +234,9 @@ def result():
 @app.route('/generate_random', methods=['POST'])
 def generate_random():
     """Generate random input for demonstration"""
-    random_input = generate_random_input()
+    num_agents = request.form.get('num_agents', type=int)
+    num_chores = request.form.get('num_chores', type=int)
+    random_input = generate_random_input(num_agents=num_agents, num_chores=num_chores)
     return jsonify(random_input)
 
 if __name__ == '__main__':

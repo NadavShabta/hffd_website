@@ -89,6 +89,16 @@
                     <div class="agent-input">
                         <h4>Agent Valuations</h4>
                         <p class="text-muted">Enter comma-separated values for each agent's valuation of items</p>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="num_agents" class="form-label">Number of Agents</label>
+                                <input type="number" class="form-control" id="num_agents" name="num_agents" min="2" max="10" value="2">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="num_chores" class="form-label">Number of Chores</label>
+                                <input type="number" class="form-control" id="num_chores" name="num_chores" min="2" max="20" value="3">
+                            </div>
+                        </div>
                         <div id="agent-inputs">
                             <div class="mb-3">
                                 <label for="agent1" class="form-label">Agent 1 Valuations</label>
@@ -149,11 +159,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Generate random input
     document.getElementById('generate-random').addEventListener('click', function() {
+        const numAgents = document.getElementById('num_agents').value;
+        const numChores = document.getElementById('num_chores').value;
         fetch('/generate_random', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-            }
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `num_agents=${numAgents}&num_chores=${numChores}`
         })
         .then(response => response.json())
         .then(data => {
